@@ -19,19 +19,33 @@ namespace DevBlogAPI.Controllers
         }
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<PostDto>>> GetPosts()
+        public async Task<ActionResult<IEnumerable<PostDto>>> GetPosts(string? search, int page = 1, int pageSize = 10)
         {
-            return await _context.Posts
-            .Include(p => p.Author)
-            .Select(p => new PostDto 
+            var query = _context.Posts.Include(p => p.Author).AsQueryable();
+
+            if (!string.IsNullOrEmpty(search))
             {
-                Id = p.Id,
-                Title = p.Title,
-                Content = p.Content,
-                PublishedDate = p.PublishedDate,
-                AuthorName = p.Author.Name
-            })
-            .ToListAsync();
+                query = query.Where(p => p.Title.ToLower().Contains(search.ToLower()));
+            }
+
+            if (pageSize > 50) pageSize = 50;
+
+            query = query.OrderByDescending(p => p.PublishedDate);
+
+            int skipAmount = (page - 1) * pageSize;
+
+            return await query
+                .Skip(skipAmount)
+                .Take(pageSize)
+                .Select(p => new PostDto 
+                {
+                    Id = p.Id,
+                    Title = p.Title,
+                    Content = p.Content,
+                    PublishedDate = p.PublishedDate,
+                    AuthorName = p.Author.Name
+                })
+                .ToListAsync();
         }
 
         [HttpGet("{id}")]
@@ -61,53 +75,53 @@ namespace DevBlogAPI.Controllers
 
 
         [HttpPost]
-        public async Task<ActionResult<PostDto>> CreatePost(Post post)
+        public async Task<ActionResult<PostDto>> CreatePost(CreatePostDto createDto)
         {
-            _context.Add(post);
-            await _context.SaveChangesAsync();
-            return Ok(post);
-        }
+            bool doesUserExist = await _context.Authors.AnyAsync(u => u.Id == createDto.AuthorId);
 
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeletePost(int id) 
-        {
-            var post = await _context.Posts.FindAsync(id);
-            if (post == null)
+            if (!doesUserExist)
             {
-                return NotFound();
+                return BadRequest("Invalid Author ID. This user does not exist.");
             }
 
-            _context.Posts.Remove(post);
+            var newPost = new Post
+            {
+                Title = createDto.Title,
+                Content = createDto.Content,
+                AuthorId = createDto.AuthorId,
+                PublishedDate = DateTime.UtcNow 
+            };
+
+            // 3. Save to the database
+            _context.Posts.Add(newPost);
             await _context.SaveChangesAsync();
 
-            return NoContent();
+            return Ok(new PostDto 
+            {
+                Id = newPost.Id,
+                Title = newPost.Title,
+                Content = newPost.Content,
+                PublishedDate = newPost.PublishedDate
+            });
         }
 
+
         [HttpPut("{id}")]
-        public async Task<IActionResult> Update(int id, Post post)
+        public async Task<IActionResult> UpdatePostDto(int id, UpdatePostDto updateDto)
         {
-            if (post.Id != id)
+
+            Post post = await _context.Posts.FindAsync(id); 
+
+            if (post is null)
             {
                 return BadRequest();
             }
 
-            _context.Entry(post).State = EntityState.Modified;
+            post.Title = updateDto.Title;
+            post.Content = updateDto.Content;
 
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!_context.Posts.Any(e => e.Id == id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw; 
-                }
-            }
+            await _context.SaveChangesAsync();
+
             return NoContent();
         }
     }

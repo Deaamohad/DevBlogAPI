@@ -9,4 +9,18 @@ namespace DevBlogAPI.DTOs
 
         public string AuthorName { get; set; } = string.Empty;
     }
+
+    public class CreatePostDto
+    {
+        public string Title { get; set; } = string.Empty;
+        public string Content { get; set; } = string.Empty;
+        public int AuthorId { get; set; }
+    }
+
+    public class UpdatePostDto
+    {
+        public string Title { get; set; } = string.Empty;
+        public string Content { get; set; } = string.Empty;
+
+    }
 }
