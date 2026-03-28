@@ -124,5 +124,23 @@ namespace DevBlogAPI.Controllers
 
             return NoContent();
         }
+
+
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeletePost(int id) 
+        {
+            var post = await _context.Posts.FindAsync(id);
+
+            if (post == null)
+            {
+                return NotFound();
+            }
+
+            _context.Posts.Remove(post);
+
+            await _context.SaveChangesAsync();
+
+            return NoContent();
+        }
     }
 }
