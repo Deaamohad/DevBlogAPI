@@ -1,14 +1,17 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using DevBlogAPI.Data;
 using DevBlogAPI.Models;
 using DevBlogAPI.DTOs;
+
 
 namespace DevBlogAPI.Controllers 
 {
 
     [ApiController]
     [Route("api/[controller]")] 
+    [Authorize]
     public class PostsController : ControllerBase
     {
         private readonly AppDbContext _context;
